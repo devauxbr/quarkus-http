@@ -37,8 +37,10 @@ import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.net.impl.ConnectionBase;
 import io.vertx.ext.web.RoutingContext;
 
+import java.security.Principal;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 import static io.undertow.websockets.ServerWebSocketContainer.WebSocketHandshakeHolder;
 
@@ -56,14 +58,24 @@ public class VertxWebSocketHandler implements Handler<RoutingContext> {
     private final EndpointSessionHandler callback;
     private final WebsocketPathMatcher<WebSocketHandshakeHolder> pathTemplateMatcher;
     private final ServerWebSocketContainer container;
+    private final Function<RoutingContext, Principal> principalExtractor;
     private final Executor executor;
 
     private static final String SESSION_ATTRIBUTE = "io.undertow.websocket.current-connections";
 
 
     public VertxWebSocketHandler(ServerWebSocketContainer container, WebSocketDeploymentInfo info) {
+        this(container, info, null);
+    }
+
+    public VertxWebSocketHandler(
+            ServerWebSocketContainer container,
+            WebSocketDeploymentInfo info,
+            Function<RoutingContext, Principal> principalExtractor
+    ) {
         this.container = container;
         this.executor = info.getExecutor().get();
+        this.principalExtractor = principalExtractor;
         container.deploymentComplete();
         pathTemplateMatcher = new WebsocketPathMatcher<>();
         for (ConfiguredServerEndpoint endpoint : container.getConfiguredServerEndpoints()) {
@@ -108,7 +120,12 @@ public class VertxWebSocketHandler implements Handler<RoutingContext> {
                         return;
                     }
                     facade.putAttachment(HandshakeUtil.PATH_PARAMS, matchResult.getParameters());
-                    //facade.putAttachment(HandshakeUtil.PRINCIPAL, req.getUserPrincipal());
+                    if (principalExtractor != null) {
+                        Principal principal = principalExtractor.apply(event);
+                        if (principal != null) {
+                            facade.putAttachment(HandshakeUtil.PRINCIPAL, principal);
+                        }
+                    }
                     final Handshake selected = handshaker;
                     handshaker.handshake(facade, new Consumer<ChannelHandlerContext>() {
                         @Override

@@ -19,6 +19,7 @@ import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.http.HttpHeaderNames;
+import io.undertow.websockets.handshake.HandshakeUtil;
 import io.undertow.websockets.handshake.WebSocketHttpExchange;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
@@ -171,7 +172,7 @@ public class VertxWebSocketHttpExchange implements WebSocketHttpExchange {
 
     @Override
     public Principal getUserPrincipal() {
-        return null; //todo
+        return getAttachment(HandshakeUtil.PRINCIPAL);
     }
 
     @Override
